@@ -1,0 +1,35 @@
+{
+  "name": "evidence-chaincode",
+  "version": "1.0.0",
+  "description": "Hyperledger Fabric chaincode for digital evidence management",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsc",
+    "start": "fabric-chaincode-node start",
+    "test": "jest",
+    "lint": "eslint . --ext .ts",
+    "lint:fix": "eslint . --ext .ts --fix"
+  },
+  "keywords": [
+    "hyperledger-fabric",
+    "chaincode",
+    "forensics",
+    "evidence"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "fabric-contract-api": "^2.5.5",
+    "fabric-shim": "^2.5.5"
+  },
+  "devDependencies": {
+    "@types/node": "^20.10.6",
+    "typescript": "^5.3.3",
+    "@typescript-eslint/parser": "^6.17.0",
+    "@typescript-eslint/eslint-plugin": "^6.17.0",
+    "eslint": "^8.56.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

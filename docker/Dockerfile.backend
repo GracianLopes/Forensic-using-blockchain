@@ -1,0 +1,17 @@
+FROM node:18-alpine
+
+WORKDIR /app
+
+# Install dependencies
+COPY package*.json ./
+RUN npm ci --only=production
+
+# Copy built application
+COPY dist/ ./dist/
+
+# Create storage directories
+RUN mkdir -p /app/storage/temp /app/storage/evidence /app/logs
+
+EXPOSE 3000
+
+CMD ["node", "dist/index.js"]
