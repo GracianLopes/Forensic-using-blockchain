@@ -10,6 +10,13 @@ import type {
 } from './types';
 
 function resolveApiBaseUrl(): string {
+  const queryOverride = typeof window !== 'undefined'
+    ? new URLSearchParams(window.location.search).get('apiBase')?.trim()
+    : undefined;
+  if (queryOverride) {
+    return queryOverride.replace(/\/$/, '');
+  }
+
   const configured = import.meta.env.VITE_API_BASE_URL?.trim();
   if (!configured) {
     return '/api';
