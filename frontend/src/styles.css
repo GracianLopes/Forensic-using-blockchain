@@ -220,6 +220,16 @@ body {
   color: #ffd4da;
 }
 
+.warning-banner {
+  margin-top: 1rem;
+  padding: 0.85rem 1rem;
+  border: 1px solid rgba(245, 159, 66, 0.55);
+  background: rgba(88, 52, 12, 0.35);
+  border-radius: 12px;
+  color: #ffe0b8;
+  line-height: 1.4;
+}
+
 .main-grid {
   display: grid;
   gap: 1.2rem;

@@ -3,6 +3,7 @@ import { motion, useScroll, useTransform } from 'framer-motion';
 import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import {
+  API_BASE_URL,
   fetchBlockchainHealth,
   fetchHealth,
   getEvidenceById,
@@ -63,6 +64,9 @@ export default function App() {
   const [statusUpdatedBy, setStatusUpdatedBy] = useState('supervisor@example.com');
   const [statusDetails, setStatusDetails] = useState('Verified after chain-of-custody review');
   const [statusUpdateResult, setStatusUpdateResult] = useState<{ transactionId: string; timestamp: string } | null>(null);
+  const hostedOnGithubPages = window.location.hostname.endsWith('github.io');
+  const usingRelativeApi = API_BASE_URL.startsWith('/');
+  const isHostedWithoutApiConfig = hostedOnGithubPages && usingRelativeApi;
   const isNoStatusChange = Boolean(
     evidenceRecord && evidenceRecord.evidenceId === deferredEvidenceId && evidenceRecord.status === statusToSet
   );
@@ -315,6 +319,15 @@ export default function App() {
         </div>
       </motion.section>
 
+      {isHostedWithoutApiConfig ? (
+        <div className="warning-banner">
+          Live frontend is online, but backend/Fabric is not reachable from this static host. Set
+          <strong> VITE_API_BASE_URL </strong>
+          in your deploy workflow/repo variables to your deployed backend API (example:
+          https://your-backend.example.com/api).
+        </div>
+      ) : null}
+
       <motion.section
         className="status-strip"
         initial={{ opacity: 0, y: 24 }}
@@ -339,6 +352,12 @@ export default function App() {
           value={blockchainHealth?.status === 'connected' ? 'Fabric live' : 'Mock fallback'}
           timestamp={new Date().toISOString()}
           tone={blockchainHealth?.status === 'connected' ? 'good' : 'warn'}
+        />
+        <StatusCard
+          title="API Base"
+          value={API_BASE_URL}
+          timestamp={new Date().toISOString()}
+          tone={isHostedWithoutApiConfig ? 'warn' : 'good'}
         />
       </motion.section>
 

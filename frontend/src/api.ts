@@ -9,8 +9,19 @@ import type {
   EvidenceStatus
 } from './types';
 
+function resolveApiBaseUrl(): string {
+  const configured = import.meta.env.VITE_API_BASE_URL?.trim();
+  if (!configured) {
+    return '/api';
+  }
+
+  return configured.replace(/\/$/, '');
+}
+
+export const API_BASE_URL = resolveApiBaseUrl();
+
 const api = axios.create({
-  baseURL: '/api',
+  baseURL: API_BASE_URL,
   timeout: 20000
 });
 
