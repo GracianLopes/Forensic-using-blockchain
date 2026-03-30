@@ -2,7 +2,7 @@ import * as path from 'path';
 import * as fs from 'fs';
 import { v4 as uuidv4 } from 'uuid';
 import logger from '../utils/logger';
-import { EvidenceRecord, AuditEntry, EvidenceStatus } from '../models/evidence';
+import { EvidenceRecord, AuditEntry, EvidenceStatus, EvidenceMetadata } from '../models/evidence';
 
 // Mock types for when Fabric is not available
 type MockEvidenceStore = Map<string, EvidenceRecord>;
@@ -197,7 +197,15 @@ export class BlockchainService {
     submittedBy: string,
     timestamp: string
   ): { transactionId: string; timestamp: string } {
-    const parsedMetadata = JSON.parse(metadata);
+    const parsedMetadata = JSON.parse(metadata) as {
+      metadata?: Record<string, string>;
+      storagePath?: string;
+      originalFileName?: string;
+      fileSize?: string | number;
+      mimeType?: string;
+      [key: string]: unknown;
+    };
+    const normalizedMetadata = this.normalizeEvidenceMetadata(parsedMetadata);
     const transactionId = uuidv4();
 
     const auditEntry: AuditEntry = {
@@ -213,9 +221,13 @@ export class BlockchainService {
       hash,
       storagePath: parsedMetadata.storagePath || '',
       originalFileName: parsedMetadata.originalFileName,
-      fileSize: parsedMetadata.fileSize ? parseInt(parsedMetadata.fileSize) : undefined,
+      fileSize: typeof parsedMetadata.fileSize === 'number'
+        ? parsedMetadata.fileSize
+        : parsedMetadata.fileSize
+          ? parseInt(parsedMetadata.fileSize, 10)
+          : undefined,
       mimeType: parsedMetadata.mimeType,
-      metadata: parsedMetadata,
+      metadata: normalizedMetadata,
       status: EvidenceStatus.SUBMITTED,
       submittedAt: timestamp,
       submittedBy,
@@ -470,6 +482,35 @@ export class BlockchainService {
 
   private resolveRelativePath(baseDir: string, targetPath: string): string {
     return path.isAbsolute(targetPath) ? targetPath : path.resolve(baseDir, targetPath);
+  }
+
+  private normalizeEvidenceMetadata(
+    parsedMetadata: {
+      metadata?: Record<string, string>;
+      [key: string]: unknown;
+    }
+  ): EvidenceMetadata {
+    const normalized: Record<string, string> = {};
+
+    if (parsedMetadata.metadata && typeof parsedMetadata.metadata === 'object') {
+      Object.entries(parsedMetadata.metadata).forEach(([key, value]) => {
+        if (typeof value === 'string') {
+          normalized[key] = value;
+        }
+      });
+    } else {
+      Object.entries(parsedMetadata).forEach(([key, value]) => {
+        if (typeof value === 'string') {
+          normalized[key] = value;
+        }
+      });
+    }
+
+    return {
+      caseId: normalized.caseId || '',
+      type: normalized.type || '',
+      ...normalized
+    };
   }
 
   /**

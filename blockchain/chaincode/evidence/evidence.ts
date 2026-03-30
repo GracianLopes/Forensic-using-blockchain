@@ -52,12 +52,14 @@ export class EvidenceContract extends Contract {
     }
 
     // Parse metadata
-    let metadata: Record<string, string>;
+    let metadataPayload: Record<string, unknown>;
     try {
-      metadata = JSON.parse(metadataJson);
+      metadataPayload = JSON.parse(metadataJson) as Record<string, unknown>;
     } catch (error) {
       throw new Error('Invalid metadata JSON format');
     }
+
+    const metadata = this.normalizeMetadata(metadataPayload);
 
     // Create audit trail entry
     const auditEntry: AuditEntry = {
@@ -72,10 +74,16 @@ export class EvidenceContract extends Contract {
     const evidence: EvidenceRecord = {
       evidenceId,
       hash,
-      storagePath: metadata.storagePath || '',
-      originalFileName: metadata.originalFileName,
-      fileSize: metadata.fileSize ? parseInt(metadata.fileSize as unknown as string) : undefined,
-      mimeType: metadata.mimeType,
+      storagePath: typeof metadataPayload.storagePath === 'string' ? metadataPayload.storagePath : '',
+      originalFileName: typeof metadataPayload.originalFileName === 'string'
+        ? metadataPayload.originalFileName
+        : undefined,
+      fileSize: typeof metadataPayload.fileSize === 'number'
+        ? metadataPayload.fileSize
+        : typeof metadataPayload.fileSize === 'string'
+          ? parseInt(metadataPayload.fileSize, 10)
+          : undefined,
+      mimeType: typeof metadataPayload.mimeType === 'string' ? metadataPayload.mimeType : undefined,
       metadata,
       status: EvidenceStatus.SUBMITTED,
       submittedAt: timestamp,
@@ -345,5 +353,27 @@ export class EvidenceContract extends Contract {
 
     await iterator.close();
     return results;
+  }
+
+  private normalizeMetadata(metadataPayload: Record<string, unknown>): Record<string, string> {
+    const nestedMetadata = metadataPayload.metadata;
+    if (nestedMetadata && typeof nestedMetadata === 'object' && !Array.isArray(nestedMetadata)) {
+      const metadata: Record<string, string> = {};
+      Object.entries(nestedMetadata as Record<string, unknown>).forEach(([key, value]) => {
+        if (typeof value === 'string') {
+          metadata[key] = value;
+        }
+      });
+      return metadata;
+    }
+
+    const metadata: Record<string, string> = {};
+    Object.entries(metadataPayload).forEach(([key, value]) => {
+      if (typeof value === 'string') {
+        metadata[key] = value;
+      }
+    });
+
+    return metadata;
   }
 }

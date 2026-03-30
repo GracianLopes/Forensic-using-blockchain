@@ -67,6 +67,21 @@ export default function App() {
     evidenceRecord && evidenceRecord.evidenceId === deferredEvidenceId && evidenceRecord.status === statusToSet
   );
 
+  function getMetadataValue(record: EvidenceRecord, key: string): string {
+    const directValue = record.metadata[key];
+    if (typeof directValue === 'string' && directValue.trim() !== '') {
+      return directValue;
+    }
+
+    const nestedMetadata = (record.metadata as unknown as { metadata?: Record<string, string> }).metadata;
+    const nestedValue = nestedMetadata?.[key];
+    if (typeof nestedValue === 'string' && nestedValue.trim() !== '') {
+      return nestedValue;
+    }
+
+    return 'n/a';
+  }
+
   useEffect(() => {
     checkSystemStatus();
   }, []);
@@ -448,8 +463,8 @@ export default function App() {
           {evidenceRecord ? (
             <ResultCard title="Evidence Record">
               <KeyValue label="ID" value={evidenceRecord.evidenceId} />
-              <KeyValue label="Case" value={evidenceRecord.metadata.caseId} />
-              <KeyValue label="Type" value={evidenceRecord.metadata.type} />
+              <KeyValue label="Case" value={getMetadataValue(evidenceRecord, 'caseId')} />
+              <KeyValue label="Type" value={getMetadataValue(evidenceRecord, 'type')} />
               <KeyValue label="Status" value={evidenceRecord.status} />
               <KeyValue label="Submitted By" value={evidenceRecord.submittedBy} />
               <KeyValue label="Stored Hash" value={evidenceRecord.hash} />

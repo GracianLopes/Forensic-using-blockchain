@@ -78,6 +78,35 @@ describe('BlockchainService', () => {
     expect(updatedEvidence.auditTrail).toHaveLength(2);
   });
 
+  it('normalizes nested metadata payloads in mock submissions', async () => {
+    process.env.SKIP_BLOCKCHAIN_CONNECT = 'true';
+
+    const service = new BlockchainService();
+    const nestedPayload = JSON.stringify({
+      storagePath: '/tmp/evidence-1',
+      originalFileName: 'report.txt',
+      fileSize: 128,
+      mimeType: 'text/plain',
+      metadata: {
+        caseId: 'CASE-XYZ',
+        type: 'document',
+        location: 'lab-1'
+      }
+    });
+
+    await service.submitEvidence(
+      'evidence-nested',
+      'hash-1',
+      nestedPayload,
+      'investigator@example.com'
+    );
+
+    const evidence = await service.getEvidence('evidence-nested');
+    expect(evidence.metadata.caseId).toBe('CASE-XYZ');
+    expect(evidence.metadata.type).toBe('document');
+    expect(evidence.storagePath).toBe('/tmp/evidence-1');
+  });
+
   it('rejects no-op status updates in mock mode', async () => {
     process.env.SKIP_BLOCKCHAIN_CONNECT = 'true';
 
