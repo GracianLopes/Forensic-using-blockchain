@@ -119,10 +119,11 @@ router.get('/:id', async (req: Request, res: Response, next: NextFunction) => {
 router.get('/:id/verify', async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { id } = req.params;
+    const hashToVerify = typeof req.query?.hash === 'string' ? req.query.hash : undefined;
 
     logger.info('Evidence verification request', { evidenceId: id });
 
-    const result = await evidenceService.verifyEvidence(id);
+    const result = await evidenceService.verifyEvidence(id, undefined, hashToVerify);
 
     res.json({
       success: true,

@@ -213,6 +213,10 @@ export class EvidenceContract extends Contract {
     // Get existing evidence
     const evidence = await this.GetEvidence(ctx, evidenceId);
 
+    if (evidence.status === status) {
+      throw new Error(`Evidence is already in status ${status}`);
+    }
+
     // Update status
     evidence.status = status as EvidenceStatus;
 

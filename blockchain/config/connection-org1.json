@@ -26,7 +26,7 @@
     "peer0.org1": {
       "url": "grpcs://localhost:7051",
       "tlsCACerts": {
-        "path": "./crypto-config/peerOrganizations/org1/peers/peer0.org1/tls/ca.crt"
+        "path": "../crypto-config/peerOrganizations/org1/peers/peer0.org1/tls/ca.crt"
       },
       "grpcOptions": {
         "ssl-target-name-override": "peer0.org1",
@@ -39,7 +39,7 @@
       "url": "https://localhost:7054",
       "caName": "ca-org1",
       "tlsCACerts": {
-        "path": "./crypto-config/peerOrganizations/org1/ca/ca.org1-cert.pem"
+        "path": "../crypto-config/peerOrganizations/org1/ca/ca.org1-cert.pem"
       },
       "httpOptions": {
         "verify": false

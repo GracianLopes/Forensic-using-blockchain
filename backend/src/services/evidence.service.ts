@@ -4,6 +4,7 @@ import { v4 as uuidv4 } from 'uuid';
 import logger from '../utils/logger';
 import hashService from './hash.service';
 import blockchainService from './blockchain.service';
+import { ApiError } from '../api/middleware/errorHandler';
 import {
   EvidenceRecord,
   EvidenceStatus,
@@ -130,13 +131,18 @@ export class EvidenceService {
   /**
    * Verify evidence integrity
    */
-  async verifyEvidence(evidenceId: string, filePath?: string): Promise<VerificationResult> {
+  async verifyEvidence(
+    evidenceId: string,
+    filePath?: string,
+    hashToVerify?: string
+  ): Promise<VerificationResult> {
     try {
       logger.info('Verifying evidence integrity', { evidenceId });
 
       // Get evidence from blockchain
       const evidence = await blockchainService.getEvidence(evidenceId);
       const storedHash = evidence.hash;
+      const hashReference = hashToVerify || storedHash;
 
       // Compute hash of provided file or stored file
       let computedHash: string;
@@ -148,7 +154,7 @@ export class EvidenceService {
         computedHash = await hashService.hashFile(evidence.storagePath);
       }
 
-      const isValid = storedHash.toLowerCase() === computedHash.toLowerCase();
+      const isValid = hashReference.toLowerCase() === computedHash.toLowerCase();
 
       logger.info('Evidence verification complete', {
         evidenceId,
@@ -198,6 +204,12 @@ export class EvidenceService {
     details?: string
   ): Promise<{ transactionId: string; timestamp: string }> {
     try {
+      const evidence = await blockchainService.getEvidence(evidenceId);
+
+      if (evidence.status === status) {
+        throw new ApiError(`Evidence is already in status ${status}`, 409);
+      }
+
       logger.info('Updating evidence status', {
         evidenceId,
         status,

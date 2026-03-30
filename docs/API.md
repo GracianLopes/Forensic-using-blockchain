@@ -38,6 +38,7 @@ Check blockchain connection status.
 {
   "success": true,
   "status": "connected",
+  "mode": "fabric",
   "timestamp": "2026-03-28T10:00:00.000Z"
 }
 ```
@@ -47,6 +48,7 @@ Check blockchain connection status.
 {
   "success": false,
   "status": "disconnected",
+  "mode": "mock",
   "message": "Blockchain connection not established",
   "timestamp": "2026-03-28T10:00:00.000Z"
 }
@@ -159,10 +161,16 @@ Verify evidence integrity by comparing file hash with blockchain record.
 
 **Parameters:**
 - `id`: Evidence UUID
+- `hash` (optional query): Hash value to compare against computed file hash. If omitted, stored hash is used.
 
 **Example:**
 ```bash
 curl http://localhost:3000/api/evidence/550e8400-e29b-41d4-a716-446655440000/verify
+```
+
+**Example (verify against provided hash):**
+```bash
+curl "http://localhost:3000/api/evidence/550e8400-e29b-41d4-a716-446655440000/verify?hash=provided_hash_value"
 ```
 
 **Success Response:**
@@ -291,6 +299,11 @@ curl -X PUT http://localhost:3000/api/evidence/550e8400-e29b-41d4-a716-446655440
   }
 }
 ```
+
+**Error Responses:**
+- `400 Bad Request`: Invalid status or missing fields
+- `404 Not Found`: Evidence ID does not exist
+- `409 Conflict`: Evidence is already in the requested status (no-op update blocked)
 
 ---
 

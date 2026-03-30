@@ -78,6 +78,34 @@ describe('BlockchainService', () => {
     expect(updatedEvidence.auditTrail).toHaveLength(2);
   });
 
+  it('rejects no-op status updates in mock mode', async () => {
+    process.env.SKIP_BLOCKCHAIN_CONNECT = 'true';
+
+    const service = new BlockchainService();
+    const metadata = JSON.stringify({
+      caseId: 'CASE-001',
+      type: 'document',
+      storagePath: '/tmp/evidence-1',
+      originalFileName: 'report.txt',
+      fileSize: 128,
+      mimeType: 'text/plain'
+    });
+
+    await service.submitEvidence(
+      'evidence-1',
+      'hash-1',
+      metadata,
+      'investigator@example.com'
+    );
+
+    await expect(service.updateEvidenceStatus(
+      'evidence-1',
+      EvidenceStatus.SUBMITTED,
+      'reviewer@example.com',
+      'No change'
+    )).rejects.toThrow('already in status');
+  });
+
   it('throws for missing mock evidence', async () => {
     process.env.SKIP_BLOCKCHAIN_CONNECT = 'true';
 

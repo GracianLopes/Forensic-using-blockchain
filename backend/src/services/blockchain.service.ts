@@ -382,6 +382,10 @@ export class BlockchainService {
       throw new Error(`Evidence ${evidenceId} does not exist`);
     }
 
+    if (evidence.status === status) {
+      throw new Error(`Evidence is already in status ${status}`);
+    }
+
     const transactionId = uuidv4();
     evidence.status = status as EvidenceStatus;
 
@@ -427,11 +431,45 @@ export class BlockchainService {
   private async loadConnectionProfile(): Promise<Record<string, unknown>> {
     try {
       const ccpContent = await fs.promises.readFile(this.ccpPath, 'utf8');
-      return JSON.parse(ccpContent);
+      const ccp = JSON.parse(ccpContent) as Record<string, unknown>;
+
+      this.normalizeConnectionProfilePaths(ccp);
+
+      return ccp;
     } catch (error) {
       logger.error('Failed to load connection profile', { error, path: this.ccpPath });
       throw new Error(`Failed to load connection profile: ${error}`);
     }
+  }
+
+  /**
+   * Resolve relative tlsCACerts paths in the connection profile
+   */
+  private normalizeConnectionProfilePaths(ccp: Record<string, unknown>): void {
+    const ccpDir = path.dirname(this.ccpPath);
+
+    const peers = ccp.peers as Record<string, { tlsCACerts?: { path?: string } }> | undefined;
+    const cas = ccp.certificateAuthorities as Record<string, { tlsCACerts?: { path?: string } }> | undefined;
+
+    if (peers) {
+      Object.values(peers).forEach((peer) => {
+        if (peer?.tlsCACerts?.path) {
+          peer.tlsCACerts.path = this.resolveRelativePath(ccpDir, peer.tlsCACerts.path);
+        }
+      });
+    }
+
+    if (cas) {
+      Object.values(cas).forEach((ca) => {
+        if (ca?.tlsCACerts?.path) {
+          ca.tlsCACerts.path = this.resolveRelativePath(ccpDir, ca.tlsCACerts.path);
+        }
+      });
+    }
+  }
+
+  private resolveRelativePath(baseDir: string, targetPath: string): string {
+    return path.isAbsolute(targetPath) ? targetPath : path.resolve(baseDir, targetPath);
   }
 
   /**

@@ -32,6 +32,7 @@ This system addresses critical challenges in digital forensics:
 - **Evidence Submission**: Secure hashing and blockchain anchoring
 - **Integrity Verification**: Verify evidence against blockchain records
 - **Audit Trail**: Complete history of evidence handling
+- **Status Transition Guard**: Prevents no-op status commits (same status re-commit)
 - **Access Control**: Role-based permissions via Fabric MSP
 
 ## Tech Stack
@@ -61,20 +62,32 @@ cd /home/pluto/Desktop/BTproject
 # Install backend dependencies
 cd backend && npm install
 
-# Start Fabric network
-docker-compose up -d
+# Start Fabric network (from project root)
+cd ..
+./blockchain/scripts/setup-network.sh setup
 
 # Deploy chaincode
-./blockchain/scripts/deploy-chaincode.sh
+./blockchain/scripts/deploy-chaincode.sh all
+
+# Enroll app identity in wallet (required for real Fabric mode)
+cd backend && npm run enroll:user
 
 # Start backend API
-cd backend && npm run dev
+npm run dev
 
 # Start frontend UI (new terminal)
 cd ../frontend && npm install && npm run dev
 ```
 
 Frontend runs on `http://localhost:5173` and proxies API requests to backend on `http://localhost:3000`.
+
+To confirm real Fabric mode (not mock mode):
+
+```bash
+curl http://localhost:3000/api/health/blockchain
+```
+
+Expected connected response includes `"mode": "fabric"`.
 
 To serve the React UI directly from backend root (`http://localhost:3000`), build frontend once:
 
@@ -93,6 +106,9 @@ curl -X POST http://localhost:3000/api/evidence \
 
 # Verify evidence
 curl http://localhost:3000/api/evidence/{evidenceId}/verify
+
+# Verify against an explicit hash value
+curl "http://localhost:3000/api/evidence/{evidenceId}/verify?hash={sha256_hash}"
 
 # Get evidence history
 curl http://localhost:3000/api/evidence/{evidenceId}/history
@@ -126,7 +142,7 @@ BTproject/
 | GET | `/api/evidence/:id` | Retrieve evidence record |
 | GET | `/api/evidence/:id/verify` | Verify evidence integrity |
 | GET | `/api/evidence/:id/history` | Get audit trail |
-| POST | `/api/evidence/batch` | Batch submit evidence |
+| PUT | `/api/evidence/:id/status` | Update evidence status |
 
 ## Security Considerations
 

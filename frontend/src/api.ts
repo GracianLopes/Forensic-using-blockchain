@@ -60,8 +60,10 @@ export async function getEvidenceById(evidenceId: string): Promise<EvidenceRecor
   return data.data;
 }
 
-export async function verifyEvidenceById(evidenceId: string): Promise<VerifyEvidenceResult> {
-  const { data } = await api.get<ApiEnvelope<VerifyEvidenceResult>>(`/evidence/${evidenceId}/verify`);
+export async function verifyEvidenceById(evidenceId: string, hashToVerify?: string): Promise<VerifyEvidenceResult> {
+  const { data } = await api.get<ApiEnvelope<VerifyEvidenceResult>>(`/evidence/${evidenceId}/verify`, {
+    params: hashToVerify ? { hash: hashToVerify } : undefined
+  });
   return data.data;
 }
 
@@ -93,11 +95,26 @@ export function normalizeApiError(error: unknown): string {
   }
 
   const responseData = error.response?.data as
-    | { error?: string; message?: string; errorDescription?: string }
+    | {
+        error?: string | { message?: string };
+        message?: string;
+        errorDescription?: string;
+      }
     | undefined;
 
+  if (typeof responseData?.error === 'string') {
+    return responseData.error;
+  }
+
+  if (
+    responseData?.error &&
+    typeof responseData.error === 'object' &&
+    typeof responseData.error.message === 'string'
+  ) {
+    return responseData.error.message;
+  }
+
   return (
-    responseData?.error ||
     responseData?.message ||
     responseData?.errorDescription ||
     error.message ||

@@ -23,6 +23,30 @@ log_error() {
     echo -e "${RED}[ERROR]${NC} $1"
 }
 
+log_warn() {
+    echo -e "${YELLOW}[WARN]${NC} $1"
+}
+
+# Compose wrapper supporting docker-compose, docker compose, or COMPOSE_BIN
+compose() {
+    if [ -n "${COMPOSE_BIN:-}" ] && [ -x "${COMPOSE_BIN}" ]; then
+        "${COMPOSE_BIN}" "$@"
+        return $?
+    fi
+
+    if command -v docker-compose &> /dev/null; then
+        docker-compose "$@"
+        return $?
+    fi
+
+    if docker compose version &> /dev/null; then
+        docker compose "$@"
+        return $?
+    fi
+
+    return 127
+}
+
 # Check prerequisites
 check_prerequisites() {
     log_info "Checking prerequisites..."
@@ -32,8 +56,8 @@ check_prerequisites() {
         exit 1
     fi
 
-    if ! command -v docker-compose &> /dev/null; then
-        log_error "docker-compose not found"
+    if ! compose version &> /dev/null; then
+        log_error "Compose command not found. Install docker-compose or Docker Compose v2, or set COMPOSE_BIN to a compose binary path."
         exit 1
     fi
 
@@ -56,20 +80,20 @@ create_directories() {
 start_network() {
     log_info "Starting Fabric network..."
 
-    docker-compose up -d ca_org1 orderer peer0_org1 couchdb
+    compose up -d ca_org1 orderer peer0_org1 couchdb
 
     log_info "Waiting for services to start (30 seconds)..."
     sleep 30
 
     # Check container status
-    docker-compose ps
+    compose ps
 }
 
 # Stop Fabric network
 stop_network() {
     log_info "Stopping Fabric network..."
 
-    docker-compose down
+    compose down
 
     log_info "Network stopped."
 }
@@ -85,7 +109,7 @@ restart_network() {
 clean_network() {
     log_info "Cleaning network (removing volumes)..."
 
-    docker-compose down -v --remove-orphans
+    compose down -v --remove-orphans
 
     # Remove generated crypto material
     rm -rf docker/fabric/ca-org1/*
@@ -133,11 +157,11 @@ enroll_admin() {
 show_status() {
     log_info "Network status:"
     echo ""
-    docker-compose ps
+    compose ps
     echo ""
 
     log_info "Container logs (last 20 lines):"
-    docker-compose logs --tail=20
+    compose logs --tail=20
 }
 
 # Main

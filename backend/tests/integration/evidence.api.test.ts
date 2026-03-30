@@ -19,7 +19,8 @@ jest.mock('../../src/services/evidence.service', () => ({
 jest.mock('../../src/services/blockchain.service', () => ({
   __esModule: true,
   default: {
-    isConnectionActive: jest.fn()
+    isConnectionActive: jest.fn(),
+    isMockModeEnabled: jest.fn()
   }
 }));
 
@@ -86,6 +87,7 @@ describe('API route handlers', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockBlockchainService.isConnectionActive.mockReturnValue(true);
+    mockBlockchainService.isMockModeEnabled.mockReturnValue(false);
   });
 
   describe('health routes', () => {
@@ -279,11 +281,42 @@ describe('API route handlers', () => {
 
       await handler({ params: { id: 'evidence-1' } } as any, response, jest.fn());
 
-      expect(mockEvidenceService.verifyEvidence).toHaveBeenCalledWith('evidence-1');
+      expect(mockEvidenceService.verifyEvidence).toHaveBeenCalledWith('evidence-1', undefined, undefined);
       expect(response.body).toEqual(expect.objectContaining({
         success: true,
         data: expect.objectContaining({
           isValid: true
+        })
+      }));
+    });
+
+    it('verifies evidence using provided hash from query string', async () => {
+      const handler = getRouteHandler(evidenceRouter, 'get', '/:id/verify');
+      const response = createResponse();
+      mockEvidenceService.verifyEvidence.mockResolvedValue({
+        evidenceId: 'evidence-1',
+        isValid: false,
+        storedHash: 'stored-hash',
+        computedHash: 'computed-hash',
+        message: 'Evidence integrity check failed - hash mismatch',
+        verifiedAt: '2026-03-28T00:00:00.000Z'
+      });
+
+      await handler(
+        { params: { id: 'evidence-1' }, query: { hash: 'different-hash' } } as any,
+        response,
+        jest.fn()
+      );
+
+      expect(mockEvidenceService.verifyEvidence).toHaveBeenCalledWith(
+        'evidence-1',
+        undefined,
+        'different-hash'
+      );
+      expect(response.body).toEqual(expect.objectContaining({
+        success: true,
+        data: expect.objectContaining({
+          isValid: false
         })
       }));
     });

@@ -23,17 +23,20 @@ router.get('/', (req: Request, res: Response) => {
 router.get('/blockchain', async (req: Request, res: Response) => {
   try {
     const isConnected = blockchainService.isConnectionActive();
+    const mode = blockchainService.isMockModeEnabled() ? 'mock' : 'fabric';
 
     if (isConnected) {
       res.json({
         success: true,
         status: 'connected',
+        mode,
         timestamp: new Date().toISOString()
       });
     } else {
       res.status(503).json({
         success: false,
         status: 'disconnected',
+        mode,
         message: 'Blockchain connection not established',
         timestamp: new Date().toISOString()
       });

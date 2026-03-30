@@ -178,6 +178,29 @@ describe('EvidenceService', () => {
     expect(result.message).toContain('hash mismatch');
   });
 
+  it('verifies evidence against a provided hash override', async () => {
+    mockBlockchainService.getEvidence.mockResolvedValue({
+      evidenceId: 'evidence-1',
+      hash: 'hash-1',
+      storagePath: '/tmp/stored-evidence-1',
+      metadata: {
+        caseId: 'CASE-001',
+        type: 'document'
+      },
+      status: EvidenceStatus.SUBMITTED,
+      submittedAt: '2026-03-28T00:00:00.000Z',
+      submittedBy: 'investigator@example.com',
+      auditTrail: []
+    });
+    mockHashService.hashFile.mockResolvedValue('hash-1');
+
+    const result = await service.verifyEvidence('evidence-1', undefined, 'different-hash');
+
+    expect(result.isValid).toBe(false);
+    expect(result.storedHash).toBe('hash-1');
+    expect(result.computedHash).toBe('hash-1');
+  });
+
   it('returns evidence history and updates status through blockchain service', async () => {
     mockBlockchainService.getEvidenceHistory.mockResolvedValue([
       {
@@ -190,6 +213,19 @@ describe('EvidenceService', () => {
       transactionId: 'tx-456',
       timestamp: '2026-03-28T01:00:00.000Z'
     });
+    mockBlockchainService.getEvidence.mockResolvedValue({
+      evidenceId: 'evidence-1',
+      hash: 'hash-1',
+      storagePath: '/tmp/evidence-1',
+      metadata: {
+        caseId: 'CASE-001',
+        type: 'document'
+      },
+      status: EvidenceStatus.SUBMITTED,
+      submittedAt: '2026-03-28T00:00:00.000Z',
+      submittedBy: 'investigator@example.com',
+      auditTrail: []
+    });
 
     await expect(service.getEvidenceHistory('evidence-1')).resolves.toHaveLength(1);
     await expect(service.updateEvidenceStatus(
@@ -201,6 +237,33 @@ describe('EvidenceService', () => {
       transactionId: 'tx-456',
       timestamp: '2026-03-28T01:00:00.000Z'
     });
+  });
+
+  it('rejects no-op status updates when evidence is already in the target status', async () => {
+    mockBlockchainService.getEvidence.mockResolvedValue({
+      evidenceId: 'evidence-1',
+      hash: 'hash-1',
+      storagePath: '/tmp/evidence-1',
+      metadata: {
+        caseId: 'CASE-001',
+        type: 'document'
+      },
+      status: EvidenceStatus.VERIFIED,
+      submittedAt: '2026-03-28T00:00:00.000Z',
+      submittedBy: 'investigator@example.com',
+      auditTrail: []
+    });
+
+    await expect(service.updateEvidenceStatus(
+      'evidence-1',
+      EvidenceStatus.VERIFIED,
+      'reviewer@example.com',
+      'Duplicate update'
+    )).rejects.toMatchObject({
+      statusCode: 409
+    });
+
+    expect(mockBlockchainService.updateEvidenceStatus).not.toHaveBeenCalled();
   });
 
   it('reads stored evidence files and reports file presence', () => {

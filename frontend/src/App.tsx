@@ -36,6 +36,7 @@ export default function App() {
   const { scrollYProgress } = useScroll();
   const progressWidth = useTransform(scrollYProgress, [0, 1], ['0%', '100%']);
   const workflowRef = useRef<HTMLDivElement | null>(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const [health, setHealth] = useState<HealthResponse | null>(null);
   const [blockchainHealth, setBlockchainHealth] = useState<HealthResponse | null>(null);
@@ -54,6 +55,7 @@ export default function App() {
   const [evidenceIdInput, setEvidenceIdInput] = useState('');
   const deferredEvidenceId = useDeferredValue(evidenceIdInput.trim());
   const [evidenceRecord, setEvidenceRecord] = useState<EvidenceRecord | null>(null);
+  const [hashToVerify, setHashToVerify] = useState('');
   const [verifyResult, setVerifyResult] = useState<VerifyEvidenceResult | null>(null);
   const [history, setHistory] = useState<AuditEntry[]>([]);
 
@@ -61,6 +63,9 @@ export default function App() {
   const [statusUpdatedBy, setStatusUpdatedBy] = useState('supervisor@example.com');
   const [statusDetails, setStatusDetails] = useState('Verified after chain-of-custody review');
   const [statusUpdateResult, setStatusUpdateResult] = useState<{ transactionId: string; timestamp: string } | null>(null);
+  const isNoStatusChange = Boolean(
+    evidenceRecord && evidenceRecord.evidenceId === deferredEvidenceId && evidenceRecord.status === statusToSet
+  );
 
   useEffect(() => {
     checkSystemStatus();
@@ -145,8 +150,11 @@ export default function App() {
 
       setSubmitResult(result);
       setEvidenceIdInput(result.evidenceId);
+      setHashToVerify(result.hash);
       setFile(null);
-      (event.currentTarget.querySelector('input[type="file"]') as HTMLInputElement).value = '';
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
     } catch (error) {
       setErrorMessage(normalizeApiError(error));
     } finally {
@@ -165,6 +173,7 @@ export default function App() {
 
     try {
       const record = await getEvidenceById(deferredEvidenceId);
+      setHashToVerify(record.hash);
       startTransition(() => {
         setEvidenceRecord(record);
       });
@@ -185,7 +194,8 @@ export default function App() {
     setActiveAction('verify');
 
     try {
-      const result = await verifyEvidenceById(deferredEvidenceId);
+      const hashOverride = hashToVerify.trim();
+      const result = await verifyEvidenceById(deferredEvidenceId, hashOverride || undefined);
       setVerifyResult(result);
     } catch (error) {
       setErrorMessage(normalizeApiError(error));
@@ -222,6 +232,11 @@ export default function App() {
       return;
     }
 
+    if (isNoStatusChange) {
+      setErrorMessage('Evidence is already in the selected status.');
+      return;
+    }
+
     setErrorMessage('');
     setActiveAction('status-update');
 
@@ -233,6 +248,12 @@ export default function App() {
         details: statusDetails
       });
       setStatusUpdateResult(result);
+      if (evidenceRecord && evidenceRecord.evidenceId === deferredEvidenceId) {
+        setEvidenceRecord({
+          ...evidenceRecord,
+          status: statusToSet
+        });
+      }
     } catch (error) {
       setErrorMessage(normalizeApiError(error));
     } finally {
@@ -323,7 +344,12 @@ export default function App() {
           <form onSubmit={handleSubmitEvidence} className="form-grid">
             <label>
               Evidence File
-              <input type="file" onChange={(event) => setFile(event.target.files?.[0] ?? null)} required />
+              <input
+                ref={fileInputRef}
+                type="file"
+                onChange={(event) => setFile(event.target.files?.[0] ?? null)}
+                required
+              />
             </label>
 
             <label>
@@ -410,6 +436,15 @@ export default function App() {
             </button>
           </div>
 
+          <label>
+            Hash To Verify
+            <input
+              value={hashToVerify}
+              onChange={(event) => setHashToVerify(event.target.value)}
+              placeholder="Load a record or paste hash manually"
+            />
+          </label>
+
           {evidenceRecord ? (
             <ResultCard title="Evidence Record">
               <KeyValue label="ID" value={evidenceRecord.evidenceId} />
@@ -470,8 +505,18 @@ export default function App() {
               <input value={statusDetails} onChange={(event) => setStatusDetails(event.target.value)} />
             </label>
 
-            <button className="cta-primary" type="submit" disabled={activeAction === 'status-update'}>
-              {activeAction === 'status-update' ? 'Updating...' : 'Commit Status'}
+            <button
+              className="cta-primary"
+              type="submit"
+              disabled={
+                activeAction === 'status-update' || isNoStatusChange
+              }
+            >
+              {activeAction === 'status-update'
+                ? 'Updating...'
+                : isNoStatusChange
+                  ? 'No Status Change'
+                  : 'Commit Status'}
             </button>
           </form>
 
