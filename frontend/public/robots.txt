@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://gracianlopes.github.io/Forensic-using-blockchain/sitemap.xml
